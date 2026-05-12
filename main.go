@@ -34,7 +34,7 @@ func main() {
 		Addr:    ":8080",
 	}
 
-	httpMux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+	httpMux.HandleFunc("GET /api/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(200)
 		w.Write([]byte("OK"))
@@ -43,12 +43,12 @@ func main() {
 	apiCfg := apiConfig{}
 	fileServer := http.FileServer(http.Dir("./app"))
 	httpMux.Handle("/app/", http.StripPrefix("/app", apiCfg.middlewareMetricsInc(fileServer)))
-	httpMux.HandleFunc("GET /metrics", func(w http.ResponseWriter, r *http.Request) {
+	httpMux.HandleFunc("GET /api/metrics", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(200)
 		w.Write([]byte(fmt.Sprintf("Hits: %v", apiCfg.readHits())))
 	})
-	httpMux.HandleFunc("POST /reset", func(w http.ResponseWriter, r *http.Request) {
+	httpMux.HandleFunc("POST /api/reset", func(w http.ResponseWriter, r *http.Request) {
 		apiCfg.resetHits()
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(200)
