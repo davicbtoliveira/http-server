@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"sync/atomic"
 )
 
@@ -96,8 +97,12 @@ func main() {
 			Body string `json:"body"`
 		}
 
-		type responseJSON struct {
+		type responseValidJSON struct {
 			Valid bool `json:"valid"`
+		}
+
+		type responseNewValueJSON struct {
+			CleanedBody string `json:"cleaned_body"`
 		}
 
 		decoder := json.NewDecoder(r.Body)
@@ -113,10 +118,17 @@ func main() {
 			return
 		}
 
-		resp := responseJSON{
-			Valid: true,
+		bodyWords := strings.Split(params.Body, " ")
+		for i, v := range bodyWords {
+			if strings.ToLower(v) == "kerfuffle" || strings.ToLower(v) == "sharbert" || strings.ToLower(v) == "fornax" {
+				bodyWords[i] = "****"
+			}
 		}
-		respondWithJSON(w, 200, resp)
+		newValue := strings.Join(bodyWords, " ")
+		returnNewValue := responseNewValueJSON{
+			CleanedBody: newValue,
+		}
+		respondWithJSON(w, 200, returnNewValue)
 	})
 
 	if err := httpServer.ListenAndServe(); err != nil {
