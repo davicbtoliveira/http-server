@@ -1,9 +1,20 @@
 package main
 
-import "net/http"
+import (
+	"log"
+	"net/http"
+)
 
 func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
-	cfg.fileserverHits.Store(0)
+	if cfg.platform != "dev" {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(403)
+		w.Write([]byte("Cannot reset outside dev environment"))
+	}
+
+	if err := cfg.db.ResetUsers(r.Context()); err != nil {
+		log.Fatal("Error when deleting rows from `users` table: %s", err)
+	}
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Hits reset to 0"))
+	w.Write([]byte("Deleted all rows from `users` table"))
 }
