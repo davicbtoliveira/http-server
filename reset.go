@@ -13,7 +13,7 @@ func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := cfg.db.ResetUsers(r.Context()); err != nil {
-		log.Fatal("Error when deleting rows from `users` table: %s", err)
+		log.Fatalf("Error when deleting rows from `users` table: %s", err)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Deleted all rows from `users` table"))
