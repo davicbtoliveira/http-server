@@ -7,15 +7,16 @@ import (
 	"time"
 
 	"github.com/davicbtoliveira/http-server/internal/auth"
+	"github.com/davicbtoliveira/http-server/internal/database"
 )
 
 func (cfg *apiConfig) handlerUsersLogin(w http.ResponseWriter, r *http.Request) {
-	expiration := time.Hour
+	exp := time.Hour
+	refExp := time.Now().AddDate(0, 0, 60)
 
 	type parameters struct {
-		Password  string `json:"password"`
-		Email     string `json:"email"`
-		ExpiresIn int    `json:"expires_in_seconds"`
+		Password string `json:"password"`
+		Email    string `json:"email"`
 	}
 	type response struct {
 		User
@@ -26,14 +27,6 @@ func (cfg *apiConfig) handlerUsersLogin(w http.ResponseWriter, r *http.Request) 
 	if err := decoder.Decode(&params); err != nil {
 		log.Printf("Error when fetching request: %s", err)
 		return
-	}
-
-	if params.ExpiresIn > 0 {
-		expiration = time.Duration(params.ExpiresIn) * time.Second
-	}
-
-	if expiration > time.Hour {
-		expiration = time.Hour
 	}
 
 	user, err := cfg.db.GetUserByEmail(r.Context(), params.Email)
@@ -57,20 +50,32 @@ func (cfg *apiConfig) handlerUsersLogin(w http.ResponseWriter, r *http.Request) 
 	token, err := auth.MakeJWT(
 		user.ID,
 		cfg.secret,
-		expiration,
+		exp,
 	)
 	if err != nil {
 		respondWithError(w, 400, "Cannot create user token", err)
 		return
 	}
 
+	rt := auth.MakeRefreshToken()
+	refreshToken, err := cfg.db.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
+		Token:     rt,
+		UserID:    user.ID,
+		ExpiresAt: refExp,
+	})
+	if err != nil {
+		respondWithError(w, 401, "Couldn't create refresh token", err)
+		return
+	}
+
 	respondWithJSON(w, http.StatusOK, response{
 		User: User{
-			ID:        user.ID,
-			CreatedAt: user.CreatedAt,
-			UpdatedAt: user.UpdatedAt,
-			Email:     user.Email,
-			Token:     token,
+			ID:           user.ID,
+			CreatedAt:    user.CreatedAt,
+			UpdatedAt:    user.UpdatedAt,
+			Email:        user.Email,
+			Token:        token,
+			RefreshToken: refreshToken.Token,
 		},
 	})
 }
