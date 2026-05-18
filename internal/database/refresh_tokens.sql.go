@@ -13,14 +13,13 @@ import (
 )
 
 const createRefreshToken = `-- name: CreateRefreshToken :one
-INSERT INTO refresh_tokens (token, created_at, updated_at, user_id, expires_at, revoked_at)
+INSERT INTO refresh_tokens (token, created_at, updated_at, user_id, expires_at)
 VALUES (
     $1,
     NOW(),
     NOW(),
     $2,
-    $3,
-    NULL
+    $3
 )
 RETURNING token, created_at, updated_at, user_id, expires_at, revoked_at
 `
@@ -45,31 +44,12 @@ func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshToken
 	return i, err
 }
 
-const getRfByToken = `-- name: GetRfByToken :one
-SELECT token, created_at, updated_at, user_id, expires_at, revoked_at
-FROM refresh_tokens
-WHERE token = $1
-`
-
-func (q *Queries) GetRfByToken(ctx context.Context, token string) (RefreshToken, error) {
-	row := q.db.QueryRowContext(ctx, getRfByToken, token)
-	var i RefreshToken
-	err := row.Scan(
-		&i.Token,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.UserID,
-		&i.ExpiresAt,
-		&i.RevokedAt,
-	)
-	return i, err
-}
-
 const getUserFromRefreshToken = `-- name: GetUserFromRefreshToken :one
-SELECT u.id, u.created_at, u.updated_at, u.email, u.hashed_password
-FROM refresh_tokens AS rf
-INNER JOIN users AS u ON rf.user_id = u.id
-WHERE rf.token = $1
+SELECT users.id, users.created_at, users.updated_at, users.email, users.hashed_password FROM users
+JOIN refresh_tokens ON users.id = refresh_tokens.user_id
+WHERE refresh_tokens.token = $1
+AND revoked_at IS NULL
+AND expires_at > NOW()
 `
 
 func (q *Queries) GetUserFromRefreshToken(ctx context.Context, token string) (User, error) {

@@ -20,6 +20,8 @@ func (cfg *apiConfig) handlerUsersLogin(w http.ResponseWriter, r *http.Request) 
 	}
 	type response struct {
 		User
+		Token        string `json:"token"`
+		RefreshToken string `json:"refresh_token"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -47,7 +49,7 @@ func (cfg *apiConfig) handlerUsersLogin(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	token, err := auth.MakeJWT(
+	accessToken, err := auth.MakeJWT(
 		user.ID,
 		cfg.secret,
 		exp,
@@ -57,9 +59,9 @@ func (cfg *apiConfig) handlerUsersLogin(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	rt := auth.MakeRefreshToken()
-	refreshToken, err := cfg.db.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
-		Token:     rt,
+	refreshToken := auth.MakeRefreshToken()
+	_, err = cfg.db.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
+		Token:     refreshToken,
 		UserID:    user.ID,
 		ExpiresAt: refExp,
 	})
@@ -70,12 +72,12 @@ func (cfg *apiConfig) handlerUsersLogin(w http.ResponseWriter, r *http.Request) 
 
 	respondWithJSON(w, http.StatusOK, response{
 		User: User{
-			ID:           user.ID,
-			CreatedAt:    user.CreatedAt,
-			UpdatedAt:    user.UpdatedAt,
-			Email:        user.Email,
-			Token:        token,
-			RefreshToken: refreshToken.Token,
+			ID:        user.ID,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+			Email:     user.Email,
 		},
+		Token:        accessToken,
+		RefreshToken: refreshToken,
 	})
 }

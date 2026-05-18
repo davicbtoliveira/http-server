@@ -12,35 +12,19 @@ func (cfg *apiConfig) handlerRefresh(w http.ResponseWriter, r *http.Request) {
 		AccessToken string `json:"token"`
 	}
 
-	bearerToken, err := auth.GetBearerToken(r.Header)
+	refreshToken, err := auth.GetBearerToken(r.Header)
 	if err != nil {
 		respondWithError(w, 401, "Cannot fetch the token from request header", err)
 		return
 	}
 
-	refreshToken, err := cfg.db.GetRfByToken(r.Context(), bearerToken)
-	if err != nil {
-		respondWithError(w, 401, "Failed when fetching refresh token", err)
-		return
-	}
-
-	if refreshToken.RevokedAt.Valid {
-		respondWithError(w, 401, "revoked token", err)
-		return
-	}
-
-	if refreshToken.ExpiresAt.Before(time.Now()) {
-		respondWithError(w, 401, "expired token", err)
-		return
-	}
-
-	user, err := cfg.db.GetUserFromRefreshToken(r.Context(), refreshToken.Token)
+	user, err := cfg.db.GetUserFromRefreshToken(r.Context(), refreshToken)
 	if err != nil {
 		respondWithError(w, 401, "cannot get user by refresh token", err)
 		return
 	}
 
-	token, err := auth.MakeJWT(
+	accessToken, err := auth.MakeJWT(
 		user.ID,
 		cfg.secret,
 		time.Hour,
@@ -51,6 +35,6 @@ func (cfg *apiConfig) handlerRefresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondWithJSON(w, 200, payload{
-		AccessToken: token,
+		AccessToken: accessToken,
 	})
 }
