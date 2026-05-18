@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/davicbtoliveira/http-server/internal/auth"
 	"github.com/davicbtoliveira/http-server/internal/database"
 	"github.com/google/uuid"
 )
@@ -15,6 +16,17 @@ func (cfg *apiConfig) handlePolkaWebhook(w http.ResponseWriter, r *http.Request)
 	type parameters struct {
 		Event string `json:"event"`
 		Data  data   `json:"data"`
+	}
+
+	apiKey, err := auth.GetAPIKey(r.Header)
+	if err != nil {
+		respondWithError(w, 401, "Can't read the API Key from the request header", err)
+		return
+	}
+
+	if apiKey != cfg.polkaKey {
+		respondWithJSON(w, 401, nil)
+		return
 	}
 
 	params := parameters{}

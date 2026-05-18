@@ -106,3 +106,22 @@ func MakeRefreshToken() string {
 	rand.Read(token)
 	return hex.EncodeToString(token)
 }
+
+func GetAPIKey(headers http.Header) (string, error) {
+	authorization := headers.Get("Authorization")
+	if authorization == "" {
+		return "", errors.New("missing user token")
+	}
+
+	header := strings.Split(authorization, "ApiKey ")
+	if len(header) < 2 {
+		return "", errors.New("missing prefix")
+	}
+
+	apiString := strings.TrimSpace(header[1])
+	if apiString == "" {
+		return "", errors.New("missing token string")
+	}
+
+	return apiString, nil
+}
